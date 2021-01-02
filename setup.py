@@ -23,14 +23,6 @@ setup(
     license=about['__license__'],
     python_requires=">=3.5.2",
     packages=find_packages(),
-    package_data={
-        # data files need to be listed both here (which determines what gets
-        # installed) and in MANIFEST.in (which determines what gets included
-        # in the sdist tarball)
-        "mtag_tool": [
-            "usage.md",
-        ],
-    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",

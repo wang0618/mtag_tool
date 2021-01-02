@@ -1,5 +1,5 @@
 from functools import partial
-from os import path, listdir, mkdir
+from os import path, listdir
 
 import requests
 
@@ -68,14 +68,14 @@ def save_and_next():
 @use_scope('music_tag_info', clear=True)
 def show_music_info(tag):
     put_markdown('### 音乐文件Tag信息')
-    put_markdown(f'`{tag.file_path}`')
+    put_markdown('`%s`' % tag.file_path)
 
     put_row([
-        put_markdown(f"""
-        - Title: {edited_info['title']}
-        - Artist: {edited_info['artist']}
-        - Album: {edited_info['album']}
-        """, lstrip=True),
+        put_markdown("""
+        - Title: %s
+        - Artist: %s
+        - Album: %s
+        """ % (edited_info['title'], edited_info['artist'], edited_info['album']), lstrip=True),
         put_image(edited_info['img'], width='100px') if edited_info['img'] else put_code('无封面图片')
     ], size='1fr 100px')
 
@@ -94,7 +94,7 @@ def show_music_info(tag):
         put_scrollable(edited_info['unsync_lrc'], max_height=200)
 
     if any(edited_info[k] != v for k, v in current_tag.info()._asdict().items()):
-        put_markdown('> 当前修改未保存')
+        style(put_markdown('> ⚠️当前修改未保存'), 'color:red')
 
     put_buttons(['编辑基本信息', '保存并编辑下一个'], [edit, save_and_next])
 
@@ -108,7 +108,11 @@ def show_netease_info(tag):
     with use_scope('loading'):
         put_text('加载中')
         put_loading()
-        songs = search(title)
+        try:
+            songs = search(title)
+        except Exception:
+            toast('网络请求错误', color='error')
+            songs = []
         clear()
 
     res = []
@@ -119,22 +123,25 @@ def show_netease_info(tag):
             put_link(song.name, "https://music.163.com/#/song?id=%s" % song.id),
             song.artists,
             song.album,
-            put_buttons(['歌词', '选定'], song_action, small=True)
+            put_buttons(['查看歌词', '选定'], song_action, small=True)
         ])
 
     if res:
-        put_table(res, header='Image Title Singer Album Action'.split())
+        put_markdown('> 若要使用以下某个歌曲的信息覆盖当前音乐文件，请点击歌曲右侧的`选定`按钮')
+        put_table(res, header='封面 标题 演唱者 专辑 操作'.split())
     else:
         put_markdown('> 无数据')
 
 
 def netease_song_action(action, song):
-    sync_lrc, unsync_lrc = get_lyric(song.id)
+    try:
+        sync_lrc, unsync_lrc = get_lyric(song.id)
+    except Exception:
+        return toast('网络请求错误，请重试', color='error')
 
     if action == '歌词':
         with popup('%s - %s 歌词' % (song.artists, song.name)):
             put_code(unsync_lrc)
-
     elif action == '选定':
         edited_info['img_content'] = requests.get(song.image, timeout=10, headers=netease_headers).content
         edited_info.update(
@@ -147,7 +154,6 @@ def netease_song_action(action, song):
             url="https://music.163.com/#/song?id=%s" % song.id,
         )
         show_music_info(current_tag)
-        # toast('`%s` 处理完毕' % tag.file_path)
 
 
 @use_scope('music_info', clear=True)
@@ -172,7 +178,6 @@ def process_music(idx):
 
 
 def select_music_dir():
-    global music_path
     clear('ROOT')
     music_path = input('请输入音乐文件目录')
     open(path.join(here_dir, 'last_path'), 'w').write(music_path)
@@ -229,11 +234,12 @@ def main():
 
     if not path.exists(path.join(here_dir, 'last_path')):
         return select_music_dir()
+    music_path = open(path.join(here_dir, 'last_path')).read()
 
-    put_markdown("# 音乐标签补全\n")
+    put_markdown("# 音乐标签补全")
 
     put_row([
-        put_markdown(f'扫描目录: `{music_path}`'),
+        put_markdown('扫描目录: `%s`' % music_path),
         put_buttons(['更改目录'], [select_music_dir], small=True)
     ], size='1fr auto')
 
@@ -243,4 +249,4 @@ def main():
 
 
 if __name__ == '__main__':
-    start_server(main, port=8080)
+    start_server(main, port=8080, debug=True)
