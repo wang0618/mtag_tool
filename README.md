@@ -17,3 +17,6 @@ pip3 install -U mtag_tool
 python3 -m mtag_tool
 ```
 
+### 截图
+
+![运行截图](./doc/screenshot.png)
