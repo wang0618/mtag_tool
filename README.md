@@ -19,4 +19,6 @@ python3 -m mtag_tool
 
 ### 截图
 
-![运行截图](./doc/screenshot.png)
+<p align="center">
+    <img src="https://github.com/wang0618/mtag_tool/raw/master/doc/screenshot.png" width="600px" alt="运行截图">
+</p>
