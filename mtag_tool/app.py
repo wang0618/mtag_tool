@@ -2,7 +2,7 @@ from functools import partial
 from os import path, listdir
 
 import requests
-
+import logging
 from mtag_tool.api import search, get_lyric, netease_headers
 from mtag_tool.tag import ID3Tags
 from pywebio import start_server
@@ -37,8 +37,6 @@ def split_filename(name):
 
 
 def edit():
-    set_env(auto_scroll_bottom=True)
-
     info = input_group('编辑音乐标签', [
         input('标题', name='title', value=edited_info['title']),
         input('专辑', name='album', value=edited_info['album']),
@@ -53,7 +51,6 @@ def edit():
         if v:
             edited_info[k] = v
 
-    set_env(auto_scroll_bottom=False)
     show_music_info(current_tag)
 
 
@@ -128,7 +125,8 @@ def show_netease_info(tag):
 
     if res:
         put_markdown('> 若要使用以下某个歌曲的信息覆盖当前音乐文件，请点击歌曲右侧的`选定`按钮')
-        put_table(res, header='封面 标题 演唱者 专辑 操作'.split())
+        put_table(res,
+                  header=[style(put_text('封面'), 'width:80px'), '标题', '演唱者', '专辑', style(put_text('操作'), 'width:130px')])
     else:
         put_markdown('> 无数据')
 
@@ -136,10 +134,14 @@ def show_netease_info(tag):
 def netease_song_action(action, song):
     try:
         sync_lrc, unsync_lrc = get_lyric(song.id)
-    except Exception:
-        return toast('网络请求错误，请重试', color='error')
+    except Exception as e:
+        logging.exception('exception while getting lyric')
+        sync_lrc, unsync_lrc = None, None
+        toast('歌词获取失败，可能音乐不含歌词', color='error')
 
-    if action == '歌词':
+    if action == '查看歌词':
+        if unsync_lrc is None:
+            return
         with popup('%s - %s 歌词' % (song.artists, song.name)):
             put_code(unsync_lrc)
     elif action == '选定':
@@ -154,6 +156,7 @@ def netease_song_action(action, song):
             url="https://music.163.com/#/song?id=%s" % song.id,
         )
         show_music_info(current_tag)
+        scroll_to(scope='music_info', position='top')
 
 
 @use_scope('music_info', clear=True)
@@ -224,14 +227,12 @@ def list_music_dir_file(music_path):
         for idx, i in enumerate(infos)
     ]
 
-    put_table(table, header=['文件', '歌曲名', '演唱者', '专辑', '封面', '文件名规范', '操作'])
+    put_table(table, header=['文件', '歌曲名', '演唱者', '专辑', '封面', '文件名规范', style(put_text('操作'), 'width:50px')])
 
     put_markdown('---')
 
 
 def main():
-    set_env(auto_scroll_bottom=False)
-
     if not path.exists(path.join(here_dir, 'last_path')):
         return select_music_dir()
     music_path = open(path.join(here_dir, 'last_path')).read()
